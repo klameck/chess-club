@@ -82,9 +82,6 @@ class ChessBoard():
             self.sq[31 + i] = 1           # rank 7 (row 2)
             self.sq[81 + i] = 6           # rank 2 (row 7)
             self.sq[91 + i] = pc + 6    # rank 1 (row 8)
-
-        
-        
         
         # purely for looking at it / checking stuff at this point!
         self.rep = list(range(0, 120))
@@ -111,9 +108,10 @@ class ChessBoard():
             for rank in range(0, 12)
         ) + "\n\n"
 
-    def backstabbing(cur_sq, target_sq):
-        if sq[target_sq] * sq[cur_sq] > 0:
+    """def backstabbing(cur_sq, target_sq):
+        if board.sq[target_sq] * board.sq[cur_sq] > 0:
             return "Illegal move, don't stab your own piece in the back!"
+            """
 
 
 
@@ -123,7 +121,7 @@ class ChessBoard():
         # this requires empty places to be 0 
         # and the colours to have opposing signs
         
-         """   
+        """   
         # piece 
         piece = 
 
@@ -162,12 +160,79 @@ class ChessBoard():
 
         pass"""
 
+    def square_attacked(self, my_sqr, player_white):
+        
+        knight_offsets = [-21, -19, -12, -8, 8, 12, 19, 21]
+        king_offset = [-10, 10, -1, 1, -11, -9, 9, 11]
+        orth_offset = [10, -10, 1, -1]
+        diag_offset = [-11, -9, 9, 11]
 
-    def is_check():
-        pass
+        #whites turn
+        if player_white:
+            pawn_offset = [9,11]
+            orth_attackers = [3,4] #black rook and queen
+            knight_attacker = 1 #black knight
+            diag_attackers = [2,4] #black bishop and queen
+            pawn_attacker = 0 #black pawn
+            king_attacker = 5 #black king
+            
+        #blacks turn
+        else:
+            pawn_offset = [-9,-11] 
+            orth_attackers = [9,10] #white rook and queen
+            knight_attacker = 7 #white knight
+            diag_attackers = [8,10] #white bishop and queen
+            pawn_attacker = 6 #white pawn
+            king_attacker = 11 #white king
+            
 
-    def is_checkmate():
-        pass
+        #check knight moves
+        for offset in knight_offsets:
+            if self.sq[my_sqr + offset] == knight_attacker: 
+                return True
+            
+        #check for orthogonal attacks
+        for offset in orth_offset:
+            current_idx = my_sqr + offset
+            while self.sq[current_idx] != -1: # until hitting boundary
+                if self.sq[current_idx] != None: #if non-empty square
+                    if self.sq[current_idx] in orth_attackers : # rook or queen
+                        return True
+                    break # Blocked by another piece
+                current_idx += offset
+        #check for diagonal attacks
+        for offset in diag_offset:
+            current_idx = my_sqr + offset
+            while self.sq[current_idx] != -1: # until hitting boundary
+                if self.sq[current_idx] != None: #if non-empty square
+                    if self.sq[current_idx] in diag_attackers : # bishop or queen
+                        return True
+                    break # Blocked by another piece
+                current_idx += offset
+
+        #check pawn attacks 
+        for offset in pawn_offset:
+            current_idx = my_sqr + offset
+            if self.sq[current_idx] == pawn_attacker: # pawn
+                return True
+        #check for king attack
+        for offset in king_offset:
+            current_idx = my_sqr + offset
+            if self.sq[current_idx] == king_attacker: # king
+                return True        
+                
+        return False
+            
+    def is_check(self):
+        if self.player_white:
+            king_loc = self.pieces[5][0]
+            return board.square_attacked(king_loc, self.player_white)
+        else:
+            king_loc = self.pieces[11][0]
+            return board.square_attacked(king_loc, self.player_white)
+
+    def is_checkmate(self):
+        return self.is_check() and len(self.legal_moves()) == 0  #is in chack and no legal moves left
 
 if __name__ == "__main__":
     board = ChessBoard()
