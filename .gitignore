@@ -11,3 +11,6 @@ wheels/
 
 # stockfish
 stockfish/
+
+# don't sync images
+assets
