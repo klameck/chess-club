@@ -21,6 +21,14 @@ BOARD REPRESENTATION
 110 111 112 113 114 115 116 117 118 119
 """
 
+"""
+TO DO
+- implement en passant
+- castelling
+- king not in check when moving
+- legal moves for one piece
+"""
+
 import math
 
 PIECES = {
@@ -46,7 +54,12 @@ class ChessBoard():
     """Standard 8x8 board in a 10x12 mailbox (120 repuares, index = row*12 + col).
     Off-board repuares are OFF (-1), so edge moves need no bounds checks."""
     
-
+    # I think we might have flipped the whole board (against convention)???
+    # dunno if we should change it???
+    # to be changed then: 
+    # piece positions
+    # self.coordination calculation
+    # pawn direction
     def __init__(self):
         self.pieces = [[x for x in range(81, 89)], # white pawns
                     [92, 97],   # white knigt
@@ -55,8 +68,8 @@ class ChessBoard():
                     [94],       # white queen
                     [95],       # white king    
                     [x for x in range(31, 39)], # black pawns
-                    [22, 17],   # black knigt
-                    [13, 16],   # black bishop
+                    [22, 27],   # black knigt
+                    [13, 26],   # black bishop
                     [21, 28],   # black rook
                     [24],       # black queen
                     [25]        # black king
@@ -108,57 +121,156 @@ class ChessBoard():
             for rank in range(0, 12)
         ) + "\n\n"
 
-    """def backstabbing(cur_sq, target_sq):
-        if board.sq[target_sq] * board.sq[cur_sq] > 0:
-            return "Illegal move, don't stab your own piece in the back!"
-            """
+    def steppable(self, target_sq):
+        """ Checking if your own piece is on the target square or reaching a border.
+
+        Return True if the square is empty or occupied by the other side.
+        Return False if the square is occupied by your own piece.
+        Return False if the square is actually out of bounds. """
+        if self.sq[target_sq] == EMPTY:
+            return True
+        if self.sq[target_sq] == BORDER:
+            return False 
+
+        if self.player_white and self.sq[target_sq] < 6:
+            return True
+        elif not self.player_white and self.sq[target_sq] >= 6:
+            return True
+        else:
+            return False # backstabbing 
+                
+            
+    def coord(self, sq):
+        file = sq % 10 -1
+        rank = 10 - sq // 10 
+        return f"{chr(ord('a') + file)}{rank}"
+
+    def convert_to_uci(self, cur_sq, target_sq, promotion=""):
+        return self.coord(cur_sq) + self.coord(target_sq) + promotion
 
 
 
-    def legal_moves():
+    def legal_moves(self):
         """ Returns list of all possible moves of one colour in UCI format"""
         # check for same colour piece on target square
         # this requires empty places to be 0 
         # and the colours to have opposing signs
+        colour_offset = 0 if self.player_white else 6
+        legal_moves = []
+
+        def straight_moves(piece, max_step_size):
+            for square in range(1, max_step_size):
+                if self.steppable(piece + square):
+                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
+                else:
+                    break
+            for square in range(1, max_step_size):
+                if self.steppable(piece - square):
+                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
+                else:
+                    break
+            for square in range(1, max_step_size):
+                if self.steppable(piece + square * 10):
+                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
+                else: 
+                    break
+            for square in range(1, max_step_size):
+                if self.steppable(piece - square * 10):
+                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
+                else:
+                    break
+
+        def diagonal_moves(piece, max_step_size):
+            for square in range(9, max_step_size*9):
+                if self.steppable(piece + square):
+                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
+                else:
+                    break
+            for square in range(9, max_step_size*9):
+                if self.steppable(piece - square):
+                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
+                else:
+                    break
+            for square in range(11, max_step_size*11):
+                if self.steppable(piece + square):
+                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
+                else: 
+                    break
+            for square in range(1, max_step_size*11):
+                if self.steppable(piece - square):
+                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
+                else:
+                    break
         
-        """   
-        # piece 
-        piece = 
-
-        # rook
-        if abs(piece) == 4:
-            # files
-            if dif % 10 = 0:
-                # check for collisions on the way
-                for i in range(1, dif):
-                    # in file
-                    if self.sq[cur_sq + i*10] != EMPTY:
-                        return False
-                
-                # check if out of bounds ?
-
-            # ranks
-            elif math.floor( cur_sq / 10 ) == math.floor( target_sq / 10):
-                # check for collisions on the way
-                for i in range(1, dif):
-                    if self.sq[cur_sq + i] != EMPTY:
-                        return False
-
-                # check if out of bounds ?
-            else:
-                return False
-
         
-        # knight
-        if abs(piece) == 2:
-            if abs(dif) == 21 or abs(dif) == 19:
-                # not needed to check for pieces in the way
-                # check for out of bounds  
+        # pawns
+        pawn_direction = -1 if self.player_white else 1
+        
+        for pawn in self.pieces[0 + colour_offset]:
+            # moves
+            basic = pawn + pawn_direction * 10
+            starting = pawn + pawn_direction * 20
+            diagonals = [pawn + pawn_direction * 9, pawn + pawn_direction * 11]
+
+            # diagonals
+            for diag in diagonals:
+                if self.sq[diag] != EMPTY and self.steppable(diag):
+                    if diag // 20 == 1 or diag // 90 == 1:
+                        # default promotion to queen, could be changed later to give choice
+                        legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=diag, promotion="q"))
+                    else:
+                        legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=diag))
+
+            if self.sq[basic] == EMPTY and self.steppable(basic):
+                if basic // 20 == 1 or basic // 90 == 1:
+                    # default promotion to queen, could be changed later to give choice
+                    legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=basic, promotion="q"))
+                else:
+                    legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=basic))
             
-        else:
-            return "Illegal move, you can't move like that..."
+            # en passant
+            # elif 
+            else:
+                break # cannot jump over, so move on to the next pawn
+            
+            # starting move
+            if self.player_white and pawn // 80 and self.sq[starting] == EMPTY: 
+                legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=starting))
+            elif not self.player_white and pawn // 30 and self.sq[starting] == EMPTY:
+                legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=starting))
+            
+        # knights
+        for knight in self.pieces[1 + colour_offset]:
+            for move in [-8, -12, -19, -21, 8, 12, 19, 21]:
+                target_sq = knight  + move
+                if self.steppable(target_sq):
+                    legal_moves.append(self.convert_to_uci(knight, target_sq))
 
-        pass"""
+        # bishop
+        for bishop in self.pieces[2 + colour_offset]:
+            diagonal_moves(bishop, 7)
+
+        # rooks
+        for rook in self.pieces[3 + colour_offset]:
+            straight_moves(rook, 7)
+
+        # queen 
+        queen = self.pieces[4 + colour_offset][0]
+        straight_moves(queen, 7)
+        diagonal_moves(queen, 7)
+
+        # king
+        king = self.pieces[5 + colour_offset][0] 
+        # check ?
+        # ...
+        straight_moves(king, 1)
+        diagonal_moves(king, 1)
+
+        # casteling
+
+        return legal_moves
+        
+        
 
     def square_attacked(self, my_sqr, player_white):
         
@@ -236,5 +348,5 @@ class ChessBoard():
 
 if __name__ == "__main__":
     board = ChessBoard()
-    print(board.__str__())
-    print(board.representation())
+    #print(board.__str__())
+    print(board.legal_moves())
