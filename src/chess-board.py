@@ -25,11 +25,8 @@ BOARD REPRESENTATION
 TO DO
 - implement en passant
 - castelling
-- king not in check when moving
 - legal moves for one piece
 """
-
-import math
 
 PIECES = {
     0: "P",  # white pawn
@@ -38,6 +35,7 @@ PIECES = {
     3: "R",  # white rook
     4: "Q",  # white Queen
     5: "K",  # white King
+
     6: "p",  # black pawn
     7: "n",  # black knight
     8: "b",  # black bishop
@@ -50,6 +48,13 @@ PIECES = {
 EMPTY = None
 BORDER = -1 
 
+# Mailbox offsets
+KNIGHT_OFFSETS = (-21, -19, -12, -8, 8, 12, 19, 21)
+KING_OFFSETS = (-10, 10, -1, 1, -11, -9, 9, 11)
+ORTHOGONAL_OFFSETS = (10, -10, 1, -1)
+DIAGONAL_OFFSETS = (-11, -9, 9, 11)
+
+
 class ChessBoard():
     """Standard 8x8 board in a 10x12 mailbox (120 repuares, index = row*12 + col).
     Off-board repuares are OFF (-1), so edge moves need no bounds checks."""
@@ -61,6 +66,15 @@ class ChessBoard():
     # self.coordination calculation
     # pawn direction
     def __init__(self):
+        self.sq = [EMPTY] * 120
+        border_indices = (
+            set(range(0, 20))
+            | set(range(100, 120))
+            | {i for i in range(20, 100) if i % 10 in (0, 9)}
+        )
+        for i in border_indices:
+                    self.sq[i] = BORDER 
+
         self.pieces = [[x for x in range(81, 89)], # white pawns
                     [92, 97],   # white knigt
                     [93, 96],   # white bishop
@@ -69,32 +83,22 @@ class ChessBoard():
                     [95],       # white king    
                     [x for x in range(31, 39)], # black pawns
                     [22, 27],   # black knigt
-                    [13, 26],   # black bishop
+                    [23, 26],   # black bishop
                     [21, 28],   # black rook
                     [24],       # black queen
                     [25]        # black king
                         ]
         # all moves will be saved here
         self.history = []
+        # white starts
         self.player_white = True 
-
-        self.sq = [EMPTY] * 120
-
-        border_indices = (
-            set(range(0, 20))
-            | set(range(100, 120))
-            | {i for i in range(20, 100) if i % 10 in (0, 9)}
-        )
-
-        for i in border_indices:
-            self.sq[i] = BORDER 
 
         # standard set up
         for i, pc in enumerate([3, 1, 2, 4, 5, 2, 1, 3]):
-            self.sq[21 + i] = pc            # rank 8 (row 1)
-            self.sq[31 + i] = 1           # rank 7 (row 2)
-            self.sq[81 + i] = 6           # rank 2 (row 7)
-            self.sq[91 + i] = pc + 6    # rank 1 (row 8)
+            self.sq[21 + i] = pc + 6      # rank 8 (row 1)
+            self.sq[31 + i] = 6           # rank 7 (row 2)
+            self.sq[81 + i] = 0           # rank 2 (row 7)
+            self.sq[91 + i] = pc          # rank 1 (row 8)
         
         # purely for looking at it / checking stuff at this point!
         self.rep = list(range(0, 120))
@@ -105,6 +109,7 @@ class ChessBoard():
             self.rep[31 + i] = "p"           # rank 7 (row 2)
             self.rep[81 + i] = "P"           # rank 2 (row 7)
             self.rep[91 + i] = pc.upper()    # rank 1 (row 8)
+        
 
 
     def __str__(self):
@@ -114,30 +119,41 @@ class ChessBoard():
             for rank in range(0, 12)
         ) + "\n\n"
 
+    
     def representation(self):
+        """Return a readable board."""
+        display = list(self.rep)
+        for square in range(120):
+            piece = self.sq[square]
+            if piece is EMPTY:
+                display[square] = "."
+            elif piece == BORDER:
+                display[square] = "#"
+            else:
+                display[square] = PIECES[piece]
+
         return "\n".join(
-            " ".join(f"{self.rep[rank*10 + file]}" 
-            for file in range(0, 10)) 
-            for rank in range(0, 12)
-        ) + "\n\n"
+            " ".join(str(display[row * 10 + file]) for file in range(10))
+            for row in range(12)
+        )
 
     def steppable(self, target_sq):
         """ Checking if your own piece is on the target square or reaching a border.
-
-        Return True if the square is empty or occupied by the other side.
-        Return False if the square is occupied by your own piece.
-        Return False if the square is actually out of bounds. """
+        
+            Return True if the square is empty or occupied by the other side.
+            Return False if the square is occupied by your own piece.
+            Return False if the square is actually out of bounds. """
+        
         if self.sq[target_sq] == EMPTY:
             return True
         if self.sq[target_sq] == BORDER:
-            return False 
+            return False
 
-        if self.player_white and self.sq[target_sq] < 6:
-            return True
-        elif not self.player_white and self.sq[target_sq] >= 6:
-            return True
+        #allow capturing enemy piece
+        if self.player_white:
+            return self.sq[target_sq] >= 6
         else:
-            return False # backstabbing 
+            return self.sq[target_sq] < 6
                 
             
     def coord(self, sq):
@@ -148,10 +164,10 @@ class ChessBoard():
     def convert_to_uci(self, cur_sq, target_sq, promotion=""):
         return self.coord(cur_sq) + self.coord(target_sq) + promotion
 
-
+    
 
     def legal_moves(self):
-        """ Returns list of all possible moves of one colour in UCI format"""
+        # Returns list of all possible moves of one colour in UCI format
         # check for same colour piece on target square
         # this requires empty places to be 0 
         # and the colours to have opposing signs
@@ -159,85 +175,62 @@ class ChessBoard():
         legal_moves = []
 
         def straight_moves(piece, max_step_size):
-            for square in range(1, max_step_size):
-                if self.steppable(piece + square):
-                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
-                else:
-                    break
-            for square in range(1, max_step_size):
-                if self.steppable(piece - square):
-                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
-                else:
-                    break
-            for square in range(1, max_step_size):
-                if self.steppable(piece + square * 10):
-                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
-                else: 
-                    break
-            for square in range(1, max_step_size):
-                if self.steppable(piece - square * 10):
-                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
-                else:
-                    break
+            for direction in (1, -1, 10, -10):
+                for distance in range(1, max_step_size + 1):
+                    target_sq = piece + direction * distance
+                    if self.steppable(target_sq):
+                        legal_moves.append(self.convert_to_uci(piece, target_sq))
+                        #capature ends sliding move
+                        if self.sq[target_sq] is not EMPTY:
+                            break
+                    else:
+                        break
 
         def diagonal_moves(piece, max_step_size):
-            for square in range(9, max_step_size*9):
-                if self.steppable(piece + square):
-                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
-                else:
-                    break
-            for square in range(9, max_step_size*9):
-                if self.steppable(piece - square):
-                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
-                else:
-                    break
-            for square in range(11, max_step_size*11):
-                if self.steppable(piece + square):
-                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
-                else: 
-                    break
-            for square in range(1, max_step_size*11):
-                if self.steppable(piece - square):
-                    legal_moves.append(self.convert_to_uci(cur_sq=piece, target_sq=square))
-                else:
-                    break
-        
-        
-        # pawns
-        pawn_direction = -1 if self.player_white else 1
-        
-        for pawn in self.pieces[0 + colour_offset]:
-            # moves
-            basic = pawn + pawn_direction * 10
-            starting = pawn + pawn_direction * 20
-            diagonals = [pawn + pawn_direction * 9, pawn + pawn_direction * 11]
-
-            # diagonals
-            for diag in diagonals:
-                if self.sq[diag] != EMPTY and self.steppable(diag):
-                    if diag // 20 == 1 or diag // 90 == 1:
-                        # default promotion to queen, could be changed later to give choice
-                        legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=diag, promotion="q"))
+            for direction in (9, -9, 11, -11):
+                for distance in range(1, max_step_size + 1):
+                    target_sq = piece + direction * distance
+                    if self.steppable(target_sq):
+                        legal_moves.append(self.convert_to_uci(piece, target_sq))
+                        if self.sq[target_sq] is not EMPTY:
+                            break
                     else:
-                        legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=diag))
+                        break
+        
+        
+        # pawns      
+        pawn_direction = -10 if self.player_white else 10
+        for pawn in self.pieces[colour_offset]:
+            basic = pawn + pawn_direction
+            starting = pawn + pawn_direction * 2
+            diagonals = [pawn + pawn_direction - 1, pawn + pawn_direction + 1]
 
-            if self.sq[basic] == EMPTY and self.steppable(basic):
-                if basic // 20 == 1 or basic // 90 == 1:
-                    # default promotion to queen, could be changed later to give choice
-                    legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=basic, promotion="q"))
+            # Diagonal captures
+            for diag in diagonals:
+                if self.steppable(diag) and self.sq[diag] is not EMPTY:
+
+                    if (self.player_white and 21 <= diag <= 28) or (
+                        not self.player_white and 91 <= diag <= 98
+                    ):
+                        legal_moves.append(self.convert_to_uci(pawn, diag, promotion="q"))
+                    else:
+                        legal_moves.append(self.convert_to_uci(pawn, diag))
+
+            # One-square pawn move
+            if self.sq[basic] == EMPTY:
+                if (self.player_white and 21 <= basic <= 28) or (
+                    not self.player_white and 91 <= basic <= 98
+                ):
+                    legal_moves.append(self.convert_to_uci(pawn, basic, promotion="q"))
                 else:
-                    legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=basic))
-            
-            # en passant
-            # elif 
-            else:
-                break # cannot jump over, so move on to the next pawn
-            
-            # starting move
-            if self.player_white and pawn // 80 and self.sq[starting] == EMPTY: 
-                legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=starting))
-            elif not self.player_white and pawn // 30 and self.sq[starting] == EMPTY:
-                legal_moves.append(self.convert_to_uci(cur_sq=pawn, target_sq=starting))
+                    legal_moves.append(self.convert_to_uci(pawn, basic))
+
+                # two square pawn move
+                on_start = (self.player_white and 81 <= pawn <= 88) or (
+                    not self.player_white and 31 <= pawn <= 38
+                )
+                if on_start and self.sq[starting] == EMPTY:
+                    legal_moves.append(self.convert_to_uci(pawn, starting))
             
         # knights
         for knight in self.pieces[1 + colour_offset]:
@@ -260,17 +253,52 @@ class ChessBoard():
         diagonal_moves(queen, 7)
 
         # king
-        king = self.pieces[5 + colour_offset][0] 
-        # check ?
-        # ...
-        straight_moves(king, 1)
-        diagonal_moves(king, 1)
+        for king in self.pieces[5 + colour_offset]:
+            straight_moves(king, 1)
+            diagonal_moves(king, 1)
 
+        #### TO DO ####
         # casteling
+        # en passant 
 
-        return legal_moves
-        
-        
+
+        # filter out safe moves on temporary board
+        safe_moves = []
+        for move in legal_moves:
+            source = self._uci_square(move[:2])
+            target = self._uci_square(move[2:4])
+            moved_piece = self.sq[source]
+            captured_piece = self.sq[target] #safe content of target square 
+
+            self.sq[target] = moved_piece
+            self.sq[source] = EMPTY
+            self.pieces[moved_piece].remove(source)
+            self.pieces[moved_piece].append(target)
+            if captured_piece not in (EMPTY, BORDER):
+                self.pieces[captured_piece].remove(target)
+
+            king_code = 5 if self.player_white else 11
+            king_square = self.pieces[king_code][0]
+            in_check = self.square_attacked(king_square, not self.player_white)
+
+            # Restore the original board and piece lists.
+            self.sq[source] = moved_piece
+            self.sq[target] = captured_piece
+            self.pieces[moved_piece].remove(target)
+            self.pieces[moved_piece].append(source)
+            if captured_piece not in (EMPTY, BORDER):
+                self.pieces[captured_piece].append(target)
+
+            if not in_check:
+                safe_moves.append(move)
+
+        return safe_moves
+    
+    @staticmethod
+    def _uci_square(coord):
+        file_index = ord(coord[0]) - ord("a") + 1
+        rank_index = 10 - int(coord[1])
+        return rank_index * 10 + file_index
 
     def square_attacked(self, my_sqr, player_white):
         
@@ -279,23 +307,21 @@ class ChessBoard():
         orth_offset = [10, -10, 1, -1]
         diag_offset = [-11, -9, 9, 11]
 
-        #whites turn
+        #whites turn, select attackers by the colour doing the attacking
         if player_white:
-            pawn_offset = [9,11]
-            orth_attackers = [3,4] #black rook and queen
-            knight_attacker = 1 #black knight
-            diag_attackers = [2,4] #black bishop and queen
-            pawn_attacker = 0 #black pawn
-            king_attacker = 5 #black king
-            
-        #blacks turn
+            pawn_offset = [9, 11]
+            orth_attackers = [3, 4]   # White rook, queen
+            knight_attacker = 1       # White knight
+            diag_attackers = [2, 4]   # White bishop, queen
+            pawn_attacker = 0         # White pawn
+            king_attacker = 5         # White king
         else:
-            pawn_offset = [-9,-11] 
-            orth_attackers = [9,10] #white rook and queen
-            knight_attacker = 7 #white knight
-            diag_attackers = [8,10] #white bishop and queen
-            pawn_attacker = 6 #white pawn
-            king_attacker = 11 #white king
+            pawn_offset = [-9, -11]
+            orth_attackers = [9, 10]  # Black rook, queen
+            knight_attacker = 7       # Black knight
+            diag_attackers = [8, 10]  # Black bishop, queen
+            pawn_attacker = 6         # Black pawn
+            king_attacker = 11        # Black king
             
 
         #check knight moves
@@ -312,6 +338,7 @@ class ChessBoard():
                         return True
                     break # Blocked by another piece
                 current_idx += offset
+
         #check for diagonal attacks
         for offset in diag_offset:
             current_idx = my_sqr + offset
@@ -338,15 +365,15 @@ class ChessBoard():
     def is_check(self):
         if self.player_white:
             king_loc = self.pieces[5][0]
-            return board.square_attacked(king_loc, self.player_white)
         else:
             king_loc = self.pieces[11][0]
-            return board.square_attacked(king_loc, self.player_white)
+        return self.square_attacked(king_loc, not self.player_white)
 
     def is_checkmate(self):
         return self.is_check() and len(self.legal_moves()) == 0  #is in chack and no legal moves left
 
 if __name__ == "__main__":
     board = ChessBoard()
-    #print(board.__str__())
-    print(board.legal_moves())
+
+    print(board.representation())
+    print("Legal moves: ",board.legal_moves())
