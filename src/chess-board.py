@@ -23,9 +23,10 @@ BOARD REPRESENTATION
 
 """
 TO DO
-- implement en passant
+- en passant
 - castelling
-- legal moves for one piece
+- draw rules
+- promotion currently defaults queen
 """
 
 PIECES = {
@@ -58,13 +59,7 @@ DIAGONAL_OFFSETS = (-11, -9, 9, 11)
 class ChessBoard():
     """Standard 8x8 board in a 10x12 mailbox (120 repuares, index = row*12 + col).
     Off-board repuares are OFF (-1), so edge moves need no bounds checks."""
-    
-    # I think we might have flipped the whole board (against convention)???
-    # dunno if we should change it???
-    # to be changed then: 
-    # piece positions
-    # self.coordination calculation
-    # pawn direction
+
     def __init__(self):
         self.sq = [EMPTY] * 120
         border_indices = (
@@ -372,8 +367,57 @@ class ChessBoard():
     def is_checkmate(self):
         return self.is_check() and len(self.legal_moves()) == 0  #is in chack and no legal moves left
 
+    def make_move(self, uci_move):
+        if uci_move not in self.legal_moves():
+            return False
+
+        #make move
+        source = self._uci_square(uci_move[:2])
+        target = self._uci_square(uci_move[2:4])
+
+        moved_piece = self.sq[source]
+        captured_piece = self.sq[target]
+
+        #promotion  e.g. "a7a8q"
+        if len(uci_move) == 5:
+            new_piece = 4 if self.player_white else 10
+        else:
+            new_piece = moved_piece
+
+        # update piece lists
+        self.pieces[moved_piece].remove(source)
+        if captured_piece not in (EMPTY, BORDER):
+            self.pieces[captured_piece].remove(target)
+        self.pieces[new_piece].append(target)
+
+        #update board squares
+        self.sq[source] = EMPTY
+        self.sq[target] = new_piece
+
+        #update representation
+        self.rep[source] = source
+        self.rep[target] = PIECES[new_piece]
+
+        # record move 
+        self.history.append(uci_move)
+        #switch turns
+        self.player_white = not self.player_white
+
+        return True
+
+
+
+
 if __name__ == "__main__":
+
     board = ChessBoard()
 
+    print("Before:")
     print(board.representation())
-    print("Legal moves: ",board.legal_moves())
+
+    print("White plays e2e4:", board.make_move("e2e4"))
+    print("Black plays e7e5:", board.make_move("e7e5"))
+
+    print("Move history:", board.history)
+    print(board.representation())
+
