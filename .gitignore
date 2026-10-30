@@ -13,4 +13,4 @@ wheels/
 stockfish/
 
 # don't sync images
-assets
+assets/
