@@ -4,24 +4,6 @@ Provide: - legal_moves - is_check - is_checkmate
 """
 
 """
-BOARD REPRESENTATION
-0    1  2  3  4  5  6  7  8    9
-10   11 12 13 14 15 16 17 18   19
-    -------------------------
-20 | r  n  b  q  k  b  n  r  | 29
-30 | p  p  p  p  p  p  p  p  | 39
-40 | 41 42 43 44 45 46 47 48 | 49
-50 | 51 52 53 54 55 56 57 58 | 59
-60 | 61 62 63 64 65 66 67 68 | 69
-70 | 71 72 73 74 75 76 77 78 | 79
-80 | P  P  P  P  P  P  P  P  | 89 
-90 | r  n  b  q  k  b  n  r  | 99
-    -------------------------
-100 101 102 103 104 105 106 107 108 109
-110 111 112 113 114 115 116 117 118 119
-"""
-
-"""
 TO DO
 - en passant
 - castelling
@@ -49,13 +31,6 @@ PIECES = {
 EMPTY = None
 BORDER = -1 
 
-# Mailbox offsets
-KNIGHT_OFFSETS = (-21, -19, -12, -8, 8, 12, 19, 21)
-KING_OFFSETS = (-10, 10, -1, 1, -11, -9, 9, 11)
-ORTHOGONAL_OFFSETS = (10, -10, 1, -1)
-DIAGONAL_OFFSETS = (-11, -9, 9, 11)
-
-
 class ChessBoard():
     """Standard 8x8 board in a 10x12 mailbox (120 repuares, index = row*12 + col).
     Off-board repuares are OFF (-1), so edge moves need no bounds checks."""
@@ -71,15 +46,15 @@ class ChessBoard():
                     self.sq[i] = BORDER 
 
         self.pieces = [[x for x in range(81, 89)], # white pawns
-                    [92, 97],   # white knigt
-                    [93, 96],   # white bishop
-                    [91, 98],   # white rook
+                    [92, 97],   # white knigts
+                    [93, 96],   # white bishops
+                    [91, 98],   # white rooks
                     [94],       # white queen
                     [95],       # white king    
                     [x for x in range(31, 39)], # black pawns
-                    [22, 27],   # black knigt
-                    [23, 26],   # black bishop
-                    [21, 28],   # black rook
+                    [22, 27],   # black knigts
+                    [23, 26],   # black bishops
+                    [21, 28],   # black rooks
                     [24],       # black queen
                     [25]        # black king
                         ]
@@ -211,7 +186,7 @@ class ChessBoard():
                     else:
                         legal_moves.append(self.convert_to_uci(pawn, diag))
 
-            # One-square pawn move
+            #one-square pawn move
             if self.sq[basic] == EMPTY:
                 if (self.player_white and 21 <= basic <= 28) or (
                     not self.player_white and 91 <= basic <= 98
@@ -276,7 +251,7 @@ class ChessBoard():
             king_square = self.pieces[king_code][0]
             in_check = self.square_attacked(king_square, not self.player_white)
 
-            # Restore the original board and piece lists.
+            #restore the original board and piece lists.
             self.sq[source] = moved_piece
             self.sq[target] = captured_piece
             self.pieces[moved_piece].remove(target)
@@ -302,7 +277,7 @@ class ChessBoard():
         orth_offset = [10, -10, 1, -1]
         diag_offset = [-11, -9, 9, 11]
 
-        #whites turn, select attackers by the colour doing the attacking
+        #white turn, select attackers by the color doing the attacking
         if player_white:
             pawn_offset = [9, 11]
             orth_attackers = [3, 4]   # White rook, queen
@@ -331,7 +306,7 @@ class ChessBoard():
                 if self.sq[current_idx] != None: #if non-empty square
                     if self.sq[current_idx] in orth_attackers : # rook or queen
                         return True
-                    break # Blocked by another piece
+                    break #blocked by another piece
                 current_idx += offset
 
         #check for diagonal attacks
@@ -341,7 +316,7 @@ class ChessBoard():
                 if self.sq[current_idx] != None: #if non-empty square
                     if self.sq[current_idx] in diag_attackers : # bishop or queen
                         return True
-                    break # Blocked by another piece
+                    break #blocked by another piece
                 current_idx += offset
 
         #check pawn attacks 
@@ -405,6 +380,8 @@ class ChessBoard():
 
         return True
 
+   
+
 
 
 
@@ -412,12 +389,13 @@ if __name__ == "__main__":
 
     board = ChessBoard()
 
-    print("Before:")
+    print(board)
+
     print(board.representation())
 
     print("White plays e2e4:", board.make_move("e2e4"))
     print("Black plays e7e5:", board.make_move("e7e5"))
 
-    print("Move history:", board.history)
     print(board.representation())
+    print("Move history:", board.history)
 

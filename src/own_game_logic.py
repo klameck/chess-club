@@ -22,7 +22,7 @@ class ChessGame:
         if self.is_game_over():
             raise RuntimeError("The game is already over.")
 
-        # Your board stores history as UCI strings.
+        # history of moves
         moves = self.board.history
 
         best_move = self.engine.get_best_move(moves=moves)
