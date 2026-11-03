@@ -1,13 +1,13 @@
 """
 The board should mimic the basic interface of a python-chess board. 
-Provide: - legal_moves - is_check - is_checkmate
 """
 
 """
 TO DO
-- en passant
-- castelling
 - draw rules
+- fen notation
+
+- en passant
 - promotion currently defaults queen
 """
 
@@ -35,7 +35,20 @@ class ChessBoard():
     """Standard 8x8 board in a 10x12 mailbox (120 repuares, index = row*12 + col).
     Off-board repuares are OFF (-1), so edge moves need no bounds checks."""
 
-    def __init__(self):
+    def __init__(self, fen: str | None = None):
+        #fen notation stuff
+        super().__init__(fen)
+        if fen is not None:
+            self.load_fen(fen)
+        else:
+            self.fen = self.to_fen()
+        self.castling_rights = set("KQkq")
+        self.en_passant = None
+        self.halfmove_clock = 0
+        self.fullmove_number = 1
+
+        
+
         self.sq = [EMPTY] * 120
         border_indices = (
             set(range(0, 20))
@@ -60,8 +73,12 @@ class ChessBoard():
                         ]
         # all moves will be saved here
         self.history = []
+        self.capture_history = []
         # white starts
         self.player_white = True 
+
+        # track if castling is still possibel
+        self.castling_rights = {"w_king_side" : True, "w_queen_side" : True, "b_king_side" : True, "b_queen_side" : True}
 
         # standard set up
         for i, pc in enumerate([3, 1, 2, 4, 5, 2, 1, 3]):
@@ -88,6 +105,108 @@ class ChessBoard():
             for file in range(0, 10)) 
             for rank in range(0, 12)
         ) + "\n\n"
+
+    def load_fen(self, fen):
+        parts = fen.split()
+
+        if len(parts) != 6:
+            raise ValueError("Invalid FEN: expected 6 fields")
+
+        piece_placement, active_color, castling, ep, halfmove, fullmove = parts
+
+        # Clear the playable squares and piece lists
+        for rank in range(8):
+            for file in range(1, 9):
+                self.sq[rank * 10 + 21 + file - 1] = EMPTY
+
+        self.pieces = [[] for _ in range(12)]
+
+        # Set up pieces
+        ranks = piece_placement.split("/")
+
+        if len(ranks) != 8:
+            raise ValueError("Invalid FEN: expected 8 ranks")
+
+        for rank_index, rank_data in enumerate(ranks):
+            file_index = 0
+
+            for char in rank_data:
+                if char.isdigit():
+                    file_index += int(char)
+                else:
+                    piece_code = next(
+                        code for code, symbol in PIECES.items()
+                        if symbol == char
+                    )
+
+                    square = 21 + rank_index * 10 + file_index
+
+                    self.sq[square] = piece_code
+                    self.pieces[piece_code].append(square)
+
+                    file_index += 1
+
+            if file_index != 8:
+                raise ValueError("Invalid FEN: rank does not contain 8 squares")
+
+        # Active player
+        self.player_white = active_color == "w"
+
+        # Castling rights
+        self.castling_rights = set() if castling == "-" else set(castling)
+
+        # En-passant target square
+        self.en_passant = None if ep == "-" else self._uci_square(ep)
+
+        # Move counters
+        self.halfmove_clock = int(halfmove)
+        self.fullmove_number = int(fullmove)
+
+        self.history = []
+        self.fen = fen
+
+    def to_fen(self):
+        rows = []
+
+        for rank in range(8):
+            row = ""
+            empty_count = 0
+
+            for file in range(8):
+                square = 21 + rank * 10 + file
+                piece = self.sq[square]
+
+                if piece == EMPTY:
+                    empty_count += 1
+                else:
+                    if empty_count:
+                        row += str(empty_count)
+                        empty_count = 0
+
+                    row += PIECES[piece]
+
+            if empty_count:
+                row += str(empty_count)
+
+            rows.append(row)
+
+        piece_placement = "/".join(rows)
+
+        active_color = "w" if self.player_white else "b"
+
+        castling = "".join(
+            right for right in "KQkq"
+            if right in self.castling_rights
+        )
+        if not castling:
+            castling = "-"
+
+        ep = "-" if self.en_passant is None else self.coord(self.en_passant)
+
+        return (
+            f"{piece_placement} {active_color} {castling} "
+            f"{ep} {self.halfmove_clock} {self.fullmove_number}"
+        )
 
     
     def representation(self):
@@ -134,9 +253,61 @@ class ChessBoard():
     def convert_to_uci(self, cur_sq, target_sq, promotion=""):
         return self.coord(cur_sq) + self.coord(target_sq) + promotion
 
+    def do_castling(self, legal_moves):
+
+        if self.player_white:
+            #white kingside e1 to g1
+            if (
+                self.castling_rights["w_king_side"]
+                and self.sq[98] == 3       # white rook on h1
+                and self.sq[96] is EMPTY   # f1 empty
+                and self.sq[97] is EMPTY   # g1 empty
+                #check if kings path is under attack
+                and not self.square_attacked(96)
+                and not self.square_attacked(97)
+            ):
+                legal_moves.append("e1g1")
+
+            #white queen side e1 to c1
+            if (
+                self.castling_rights["w_queen_side"]
+                and self.sq[91] == 3       # white rook on a1
+                and self.sq[94] is EMPTY   # d1 empty
+                and self.sq[93] is EMPTY   # c1 empty
+                #check if kings path is under attack
+                and not self.square_attacked(94)
+                and not self.square_attacked(93)
+            ):
+                legal_moves.append("e1c1")
+            else:
+                #black kingside e8 to g8
+                if (
+                    self.castling_rights["b_king_side"]
+                    and self.sq[28] == 9       # black rook on h8
+                    and self.sq[27] is EMPTY   
+                    and self.sq[26] is EMPTY   
+                    #check if kings path is under attack
+                    and not self.square_attacked(26)
+                    and not self.square_attacked(27)
+                ):
+                    legal_moves.append("e8g8")
+    
+                #black queen side e8 to c8
+                if (
+                    self.castling_rights["b_queen_side"]
+                    and self.sq[21] == 9       # black rook on a8
+                    and self.sq[24] is EMPTY   
+                    and self.sq[23] is EMPTY  
+                    #check if kings path is under attack
+                    and not self.square_attacked(94)
+                    and not self.square_attacked(93)
+                ):
+                    legal_moves.append("e8c8")
+
+        return
     
 
-    def legal_moves(self):
+    def get_legal_moves(self):
         # Returns list of all possible moves of one colour in UCI format
         # check for same colour piece on target square
         # this requires empty places to be 0 
@@ -166,7 +337,6 @@ class ChessBoard():
                             break
                     else:
                         break
-        
         
         # pawns      
         pawn_direction = -10 if self.player_white else 10
@@ -227,8 +397,10 @@ class ChessBoard():
             straight_moves(king, 1)
             diagonal_moves(king, 1)
 
+        #castling
+        self.do_castling(legal_moves)
+
         #### TO DO ####
-        # casteling
         # en passant 
 
 
@@ -249,7 +421,7 @@ class ChessBoard():
 
             king_code = 5 if self.player_white else 11
             king_square = self.pieces[king_code][0]
-            in_check = self.square_attacked(king_square, not self.player_white)
+            in_check = self.square_attacked(king_square)
 
             #restore the original board and piece lists.
             self.sq[source] = moved_piece
@@ -270,7 +442,7 @@ class ChessBoard():
         rank_index = 10 - int(coord[1])
         return rank_index * 10 + file_index
 
-    def square_attacked(self, my_sqr, player_white):
+    def square_attacked(self, my_sqr):
         
         knight_offsets = [-21, -19, -12, -8, 8, 12, 19, 21]
         king_offset = [-10, 10, -1, 1, -11, -9, 9, 11]
@@ -278,22 +450,25 @@ class ChessBoard():
         diag_offset = [-11, -9, 9, 11]
 
         #white turn, select attackers by the color doing the attacking
-        if player_white:
-            pawn_offset = [9, 11]
-            orth_attackers = [3, 4]   # White rook, queen
-            knight_attacker = 1       # White knight
-            diag_attackers = [2, 4]   # White bishop, queen
-            pawn_attacker = 0         # White pawn
-            king_attacker = 5         # White king
-        else:
+        if self.player_white:
             pawn_offset = [-9, -11]
+            
             orth_attackers = [9, 10]  # Black rook, queen
             knight_attacker = 7       # Black knight
             diag_attackers = [8, 10]  # Black bishop, queen
             pawn_attacker = 6         # Black pawn
             king_attacker = 11        # Black king
             
+        else:
+            pawn_offset = [9, 11]
+            
+            orth_attackers = [3, 4]   # White rook, queen
+            knight_attacker = 1       # White knight
+            diag_attackers = [2, 4]   # White bishop, queen
+            pawn_attacker = 0         # White pawn
+            king_attacker = 5         # White king
 
+            
         #check knight moves
         for offset in knight_offsets:
             if self.sq[my_sqr + offset] == knight_attacker: 
@@ -337,13 +512,26 @@ class ChessBoard():
             king_loc = self.pieces[5][0]
         else:
             king_loc = self.pieces[11][0]
-        return self.square_attacked(king_loc, not self.player_white)
+
+        return self.square_attacked(king_loc)
 
     def is_checkmate(self):
-        return self.is_check() and len(self.legal_moves()) == 0  #is in chack and no legal moves left
+        return self.is_check() and len(self.get_legal_moves()) == 0  #is in check and no legal moves left
 
-    def make_move(self, uci_move):
-        if uci_move not in self.legal_moves():
+    def move_rook(self, source, target):
+        rook = self.sq[source]
+
+        self.sq[source] = EMPTY
+        self.sq[target] = rook
+
+        self.pieces[rook].remove(source)
+        self.pieces[rook].append(target)
+
+        self.rep[source] = "."
+        self.rep[target] = PIECES[rook]
+    
+    def push_move(self, uci_move):
+        if uci_move not in self.get_legal_moves():
             return False
 
         #make move
@@ -352,8 +540,31 @@ class ChessBoard():
 
         moved_piece = self.sq[source]
         captured_piece = self.sq[target]
+        
+        # Update castling rights
+        if moved_piece == 5 :  # White king
+            self.castling_rights["w_king_side"] = False
+            self.castling_rights["w_queen_side"] = False
 
-        #promotion  e.g. "a7a8q"
+        elif moved_piece == 11:  # Black king
+            self.castling_rights["b_king_side"] = False
+            self.castling_rights["b_queen_side"] = False
+        rook_rights = {
+            98: "w_king_side",  # White h1
+            91: "w_queen_side",  # White a1
+            28: "b_king_side",  # Black h8
+            21: "b_queen_side"   # Black a8
+        }
+        if source in rook_rights or target in rook_rights and captured_piece != EMPTY:
+            self.castling_rights[rook_rights[source]] = False
+
+        # Halfmove clock
+        if moved_piece in (0, 6) or captured_piece not in (EMPTY, BORDER):
+            self.halfmove_clock = 0
+        else:
+            self.halfmove_clock += 1
+
+        # promotion  e.g. "a7a8q"
         if len(uci_move) == 5:
             new_piece = 4 if self.player_white else 10
         else:
@@ -365,21 +576,89 @@ class ChessBoard():
             self.pieces[captured_piece].remove(target)
         self.pieces[new_piece].append(target)
 
-        #update board squares
+        # update board squares
         self.sq[source] = EMPTY
         self.sq[target] = new_piece
 
-        #update representation
+        # Castling-> move rook 
+        if uci_move == "e1g1":  # White kingside
+            self.move_rook(98, 96)
+        elif uci_move == "e1c1":  # White queenside
+            self.move_rook(91, 94)
+        elif uci_move == "e8g8":  # Black kingside
+            self.move_rook(28, 26)
+        elif uci_move == "e8c8":  # Black queenside
+            self.move_rook(21, 24)
+
+        # update representation
         self.rep[source] = source
         self.rep[target] = PIECES[new_piece]
 
         # record move 
         self.history.append(uci_move)
+        self.capture_history.append(captured_piece)
         #switch turns
         self.player_white = not self.player_white
+        if not self.player_white:
+            self.fullmove_number += 1
+        self.fen = self.to_fen()
+
 
         return True
 
+    def pop_move(self) -> None:
+        """Reverts the last executed move, restoring the previous board state."""
+        
+        # get last move and remove from history
+        uci_move = self.history.pop()
+        source = self._uci_square(uci_move[:2])
+        target = self._uci_square(uci_move[2:4])
+        moved_piece = self.sq[target]
+
+        captured_piece = self.capture_history.pop()
+        
+        # undo promotion  e.g. "a7a8q"
+        if len(uci_move) == 5:
+            old_piece = 0 if self.player_white else 6
+        else:
+            old_piece = moved_piece
+
+        # undo casteling
+        # Castling-> move rook 
+        if uci_move == "e1g1":  # White kingside
+            self.move_rook(96, 98)
+        elif uci_move == "e1c1":  # White queenside
+            self.move_rook(94, 91)
+        elif uci_move == "e8g8":  # Black kingside
+            self.move_rook(26, 28)
+        elif uci_move == "e8c8":  # Black queenside
+            self.move_rook(24, 21)
+
+        # undo en - passant
+        # ...
+        
+        # move piece back
+        # update piece lists
+        self.pieces[moved_piece].remove(target)
+        self.pieces[old_piece].append(source)
+
+        # re-put captured piece
+        if captured_piece not in (EMPTY, BORDER):
+            self.pieces[captured_piece].append(target)
+    
+        
+
+        # update board squares
+        self.sq[source] = old_piece
+        self.sq[target] = captured_piece
+    
+
+        # update representation
+        self.rep[target] = target if captured_piece == EMPTY else captured_piece
+        self.rep[source] = PIECES[old_piece]
+
+        # player
+        self.player_white = not self.player_white
    
 
 
@@ -392,10 +671,28 @@ if __name__ == "__main__":
     print(board)
 
     print(board.representation())
+    print(board.fen)
 
-    print("White plays e2e4:", board.make_move("e2e4"))
-    print("Black plays e7e5:", board.make_move("e7e5"))
+    print("White plays e2e4:", board.push_move("e2e4"))
+    print("Black plays e7e5:", board.push_move("e7e5"))
+    print("Undo last move", board.pop_move())
 
     print(board.representation())
     print("Move history:", board.history)
+
+    """print("test castling")
+    # Clear the pieces between the white king and rook
+    for square in [96, 97]:
+        piece = board.sq[square]
+        if piece is not EMPTY:
+            board.pieces[piece].remove(square)
+            board.sq[square] = EMPTY
+    print("Black plays e7e5:", board.push_move("e1g1"))
+    print(board.representation())
+
+    print("Undo last move", board.pop_move())
+
+
+    print(board.representation())"""
+
 
