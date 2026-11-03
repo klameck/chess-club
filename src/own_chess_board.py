@@ -36,20 +36,14 @@ class ChessBoard():
     Off-board repuares are OFF (-1), so edge moves need no bounds checks."""
 
     def __init__(self, fen: str | None = None):
-        #fen notation stuff
-        super().__init__(fen)
-        if fen is not None:
-            self.load_fen(fen)
-        else:
-            self.fen = self.to_fen()
+        
         self.castling_rights = set("KQkq")
         self.en_passant = None
         self.halfmove_clock = 0
         self.fullmove_number = 1
 
-        
-
         self.sq = [EMPTY] * 120
+        self.rep = list(range(120))
         border_indices = (
             set(range(0, 20))
             | set(range(100, 120))
@@ -79,24 +73,29 @@ class ChessBoard():
 
         # track if castling is still possibel
         self.castling_rights = {"w_king_side" : True, "w_queen_side" : True, "b_king_side" : True, "b_queen_side" : True}
-
-        # standard set up
-        for i, pc in enumerate([3, 1, 2, 4, 5, 2, 1, 3]):
-            self.sq[21 + i] = pc + 6      # rank 8 (row 1)
-            self.sq[31 + i] = 6           # rank 7 (row 2)
-            self.sq[81 + i] = 0           # rank 2 (row 7)
-            self.sq[91 + i] = pc          # rank 1 (row 8)
         
-        # purely for looking at it / checking stuff at this point!
-        self.rep = list(range(0, 120))
+        #fen notation 
+        if fen is not None:
+            self.load_fen(fen)
+        else:
+            # standard set up
+            for i, pc in enumerate([3, 1, 2, 4, 5, 2, 1, 3]):
+                self.sq[21 + i] = pc + 6      # rank 8 (row 1)
+                self.sq[31 + i] = 6           # rank 7 (row 2)
+                self.sq[81 + i] = 0           # rank 2 (row 7)
+                self.sq[91 + i] = pc          # rank 1 (row 8)
+            
+            # purely for looking at it / checking stuff at this point!
+            self.rep = list(range(0, 120))
 
-        # standard set up
-        for i, pc in enumerate("rnbqkbnr"):
-            self.rep[21 + i] = pc            # rank 8 (row 1)
-            self.rep[31 + i] = "p"           # rank 7 (row 2)
-            self.rep[81 + i] = "P"           # rank 2 (row 7)
-            self.rep[91 + i] = pc.upper()    # rank 1 (row 8)
+            # standard set up
+            for i, pc in enumerate("rnbqkbnr"):
+                self.rep[21 + i] = pc            # rank 8 (row 1)
+                self.rep[31 + i] = "p"           # rank 7 (row 2)
+                self.rep[81 + i] = "P"           # rank 2 (row 7)
+                self.rep[91 + i] = pc.upper()    # rank 1 (row 8)
         
+        self.fen = self.to_fen()
 
 
     def __str__(self):
@@ -107,6 +106,9 @@ class ChessBoard():
         ) + "\n\n"
 
     def load_fen(self, fen):
+        self.history = []
+        self.capture_history = []
+
         parts = fen.split()
 
         if len(parts) != 6:
@@ -153,8 +155,12 @@ class ChessBoard():
         self.player_white = active_color == "w"
 
         # Castling rights
-        self.castling_rights = set() if castling == "-" else set(castling)
-
+        self.castling_rights = {
+            "w_king_side": "K" in castling,
+            "w_queen_side": "Q" in castling,
+            "b_king_side": "k" in castling,
+            "b_queen_side": "q" in castling
+        }
         # En-passant target square
         self.en_passant = None if ep == "-" else self._uci_square(ep)
 
@@ -194,12 +200,22 @@ class ChessBoard():
 
         active_color = "w" if self.player_white else "b"
 
-        castling = "".join(
-            right for right in "KQkq"
-            if right in self.castling_rights
-        )
+        castling = ""
+        if self.castling_rights["w_king_side"]:
+            castling += "K"
+
+        if self.castling_rights["w_queen_side"]:
+            castling += "Q"
+
+        if self.castling_rights["b_king_side"]:
+            castling += "k"
+
+        if self.castling_rights["b_queen_side"]:
+            castling += "q"
+
         if not castling:
             castling = "-"
+       
 
         ep = "-" if self.en_passant is None else self.coord(self.en_passant)
 
@@ -555,8 +571,10 @@ class ChessBoard():
             28: "b_king_side",  # Black h8
             21: "b_queen_side"   # Black a8
         }
-        if source in rook_rights or target in rook_rights and captured_piece != EMPTY:
+        if source in rook_rights:
             self.castling_rights[rook_rights[source]] = False
+        if target in rook_rights and captured_piece in (3, 9):
+            self.castling_rights[rook_rights[target]] = False
 
         # Halfmove clock
         if moved_piece in (0, 6) or captured_piece not in (EMPTY, BORDER):
@@ -666,7 +684,7 @@ class ChessBoard():
 
 if __name__ == "__main__":
 
-    board = ChessBoard()
+    """board = ChessBoard()
 
     print(board)
 
@@ -678,7 +696,26 @@ if __name__ == "__main__":
     print("Undo last move", board.pop_move())
 
     print(board.representation())
-    print("Move history:", board.history)
+    print("Move history:", board.history)"""
+
+    # Standard starting position
+    board = ChessBoard()
+
+    print(board.to_fen())
+
+    # Load standard starting position from FEN
+    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+    board2 = ChessBoard(fen)
+
+    print(board2.to_fen())
+    print(board2.representation())
+
+    # Make a move
+    board2.push_move("e2e4")
+    print(board2.representation())
+
+    print(board2.to_fen())
 
     """print("test castling")
     # Clear the pieces between the white king and rook
