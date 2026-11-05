@@ -68,6 +68,7 @@ class ChessBoard():
         # all moves will be saved here
         self.history = []
         self.capture_history = []
+        self.en_passant_captured_sq = []
         # white starts
         self.player_white = True 
 
@@ -556,6 +557,13 @@ class ChessBoard():
 
         moved_piece = self.sq[source]
         captured_piece = self.sq[target]
+        en_passant_sq = None
+
+        # en passant
+        if self.sq[source] in [0, 6] and abs(source - target) in [9, 11] and target == EMPTY:
+            direction = 10 if self.player_white else -10 
+            en_passant_sq = target + direction
+            captured_piece = self.sq[captured_sq]
         
         # Update castling rights
         if moved_piece == 5 :  # White king
@@ -615,6 +623,7 @@ class ChessBoard():
         # record move 
         self.history.append(uci_move)
         self.capture_history.append(captured_piece)
+        self.en_passant_captured_sq.append(en_passant_sq)
         #switch turns
         self.player_white = not self.player_white
         if not self.player_white:
@@ -661,23 +670,66 @@ class ChessBoard():
         self.pieces[old_piece].append(source)
 
         # re-put captured piece
+        en_passant = en_passant_captured_sq.pop()
         if captured_piece not in (EMPTY, BORDER):
-            self.pieces[captured_piece].append(target)
+            # check for en passant
+            if en_passant == None:
+                self.pieces[captured_piece].append(target)
+            else:
+                self.pieces[captured_piece].append(en_passant)
     
         
 
         # update board squares
         self.sq[source] = old_piece
-        self.sq[target] = captured_piece
+        if en_passant == None:
+            self.sq[target] = captured_piece
+        else:
+            self.sq[en_passant] = captured_piece
     
 
         # update representation
-        self.rep[target] = target if captured_piece == EMPTY else captured_piece
-        self.rep[source] = PIECES[old_piece]
+        #self.rep[target] = target if captured_piece == EMPTY else captured_piece
+        #self.rep[source] = PIECES[old_piece]
 
         # player
         self.player_white = not self.player_white
-   
+
+
+def test_moves(board, move):
+    """
+    For testing (special) moves
+    c: castling
+    ep: en passant
+    """
+    if move == "c":
+        print("test castling")
+        # Clear the pieces between the white king and rook
+        for square in [96, 97]:
+            piece = board.sq[square]
+            if piece is not EMPTY:
+                board.pieces[piece].remove(square)
+                board.sq[square] = EMPTY
+        print("Black plays e7e5:", board.push_move("e1g1"))
+        print(board.representation())
+    elif move == "ep":
+        print("testing en passant")
+        print("White moves d2d4", board.push_move("d2d4"))
+        print("Black moves g8h6", board.push_move("g8h6"))
+        print("White moves d4d5", board.push_move("d4d5"))
+        print("Black moves c7c5", board.push_move("c7c5"))
+        print(board.representation)
+        print("White moves d5c6", board.push_move("d5c6"))
+        print(board.representation)
+
+        print("Reversing last move", board.pop_move())
+        print(board.representation)
+
+    else:
+        try:
+            board.push_move(move)
+        except:
+            print("Try using a valid option, 'c', 'ep' or a move in uci notation.") 
 
 
 
@@ -700,7 +752,7 @@ if __name__ == "__main__":
 
     # Standard starting position
     board = ChessBoard()
-
+    """
     print(board.to_fen())
 
     # Load standard starting position from FEN
@@ -716,20 +768,7 @@ if __name__ == "__main__":
     print(board2.representation())
 
     print(board2.to_fen())
-
-    """print("test castling")
-    # Clear the pieces between the white king and rook
-    for square in [96, 97]:
-        piece = board.sq[square]
-        if piece is not EMPTY:
-            board.pieces[piece].remove(square)
-            board.sq[square] = EMPTY
-    print("Black plays e7e5:", board.push_move("e1g1"))
-    print(board.representation())
-
-    print("Undo last move", board.pop_move())
-
-
-    print(board.representation())"""
+    """
+    test_moves(board, "ep")
 
 
