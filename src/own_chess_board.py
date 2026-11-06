@@ -31,17 +31,17 @@ PIECES = {
 EMPTY = None
 BORDER = -1 
 
-class ChessBoard():
+class MyBoard():
     """Standard 8x8 board in a 10x12 mailbox (120 repuares, index = row*12 + col).
     Off-board repuares are OFF (-1), so edge moves need no bounds checks."""
 
     def __init__(self, fen: str | None = None):
         
-        self.castling_rights = set("KQkq")
         self.en_passant = None
         self.halfmove_clock = 0
         self.fullmove_number = 1
 
+        self.castling_history = []
         self.sq = [EMPTY] * 120
         self.rep = list(range(120))
         border_indices = (
@@ -411,14 +411,14 @@ class ChessBoard():
             straight_moves(rook, 7)
 
         # queen 
-        queen = self.pieces[4 + colour_offset][0]
-        straight_moves(queen, 7)
-        diagonal_moves(queen, 7)
+        for queen in self.pieces[4 + colour_offset]:
+            straight_moves(queen, 7)
+            diagonal_moves(queen, 7)
 
         # king
-        for king in self.pieces[5 + colour_offset]:
-            straight_moves(king, 1)
-            diagonal_moves(king, 1)
+        king = self.pieces[5 + colour_offset][0]
+        straight_moves(king, 1)
+        diagonal_moves(king, 1)
 
         #castling
         self.do_castling(legal_moves)
@@ -564,6 +564,9 @@ class ChessBoard():
         if uci_move not in self.get_legal_moves():
             return False
 
+        #save castling history
+        self.castling_history.append(self.castling_rights.copy())
+
         #make move
         source = self._from_uci(uci_move[:2])
         target = self._from_uci(uci_move[2:4])
@@ -661,6 +664,7 @@ class ChessBoard():
         moved_piece = self.sq[target]
 
         captured_piece = self.capture_history.pop()
+        self.castling_rights = self.castling_history.pop()
         
         # undo promotion  e.g. "a7a8q"
         if len(uci_move) == 5:
