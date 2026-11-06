@@ -280,6 +280,7 @@ class ChessBoard():
                 and self.sq[96] is EMPTY   # f1 empty
                 and self.sq[97] is EMPTY   # g1 empty
                 #check if kings path is under attack
+                and not self.square_attacked(95)
                 and not self.square_attacked(96)
                 and not self.square_attacked(97)
             ):
@@ -289,37 +290,42 @@ class ChessBoard():
             if (
                 self.castling_rights["w_queen_side"]
                 and self.sq[91] == 3       # white rook on a1
+                and self.sq[92] is EMPTY  
                 and self.sq[94] is EMPTY   # d1 empty
                 and self.sq[93] is EMPTY   # c1 empty
                 #check if kings path is under attack
+                and not self.square_attacked(95)
                 and not self.square_attacked(94)
                 and not self.square_attacked(93)
             ):
                 legal_moves.append("e1c1")
-            else:
-                #black kingside e8 to g8
-                if (
-                    self.castling_rights["b_king_side"]
-                    and self.sq[28] == 9       # black rook on h8
-                    and self.sq[27] is EMPTY   
-                    and self.sq[26] is EMPTY   
-                    #check if kings path is under attack
-                    and not self.square_attacked(26)
-                    and not self.square_attacked(27)
-                ):
-                    legal_moves.append("e8g8")
-    
-                #black queen side e8 to c8
-                if (
-                    self.castling_rights["b_queen_side"]
-                    and self.sq[21] == 9       # black rook on a8
-                    and self.sq[24] is EMPTY   
-                    and self.sq[23] is EMPTY  
-                    #check if kings path is under attack
-                    and not self.square_attacked(94)
-                    and not self.square_attacked(93)
-                ):
-                    legal_moves.append("e8c8")
+        else:
+            #black kingside e8 to g8
+            if (
+                self.castling_rights["b_king_side"]
+                and self.sq[28] == 9       # black rook on h8
+                and self.sq[27] is EMPTY   
+                and self.sq[26] is EMPTY   
+                #check if kings path is under attack
+                and not self.square_attacked(25)
+                and not self.square_attacked(26)
+                and not self.square_attacked(27)
+            ):
+                legal_moves.append("e8g8")
+
+            #black queen side e8 to c8
+            if (
+                self.castling_rights["b_queen_side"]
+                and self.sq[21] == 9       # black rook on a8
+                and self.sq[22] is EMPTY  
+                and self.sq[24] is EMPTY   
+                and self.sq[23] is EMPTY  
+                #check if kings path is under attack
+                and not self.square_attacked(24)
+                and not self.square_attacked(25)
+                and not self.square_attacked(23)
+            ):
+                legal_moves.append("e8c8")
 
         return
     
@@ -666,15 +672,17 @@ class ChessBoard():
         # Castling-> move rook 
         if uci_move == "e1g1":  # White kingside
             self.move_rook(96, 98)
+            self.castling_rights["w_king_side"] = True
         elif uci_move == "e1c1":  # White queenside
             self.move_rook(94, 91)
+            self.castling_rights["w_queen_side"] = True                  
         elif uci_move == "e8g8":  # Black kingside
             self.move_rook(26, 28)
+            self.castling_rights["b_king_side"] = True
         elif uci_move == "e8c8":  # Black queenside
             self.move_rook(24, 21)
+            self.castling_rights["b_queen_side"] = True
 
-        # undo en - passant
-        # ...
         
         # move piece back
         # update piece lists
