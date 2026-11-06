@@ -425,8 +425,8 @@ class MyBoard():
 
         # en passant
         pawn_starting_moves = ["a2a4", "b2b4", "c2c4", "d2d4", "e2e4", "f2f4", "g2g4", "h2h4", "a7a5", "b7b5", "c7c5", "d7d5", "e7e5", "f7f5", "g7g5", "h7h5"]
-        # last move of potentially captured pawn was starting move (double advance)
-        if len(self.history) > 3 and self.history[-1] in pawn_starting_moves:
+        # last move of phistoryotentially captured pawn was starting move (double advance)
+        if len(self.history) > 0 and self.history[-1] in pawn_starting_moves:
             # check only adjacant files / chapturing pawn has advanced exactly three
             capture_square = self._from_uci(self.history[-1][2:4])
             for attacking_square in [capture_square +1, capture_square -1]:
@@ -566,7 +566,7 @@ class MyBoard():
 
         # Draw by repition
         # third time same board state (requires full history)
-        
+
     def move_rook(self, source, target):
         rook = self.sq[source]
 
@@ -795,7 +795,7 @@ if __name__ == "__main__":
     print("Move history:", board.history)"""
 
     # Standard starting position
-    board = ChessBoard()
+    #board = ChessBoard()
     """
     print(board.to_fen())
 
@@ -813,6 +813,13 @@ if __name__ == "__main__":
 
     print(board2.to_fen())
     """
-    test_moves(board, "ep")
+    # Kiwi-Pete
+    fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+    board = MyBoard(fen)
+    print(board.representation())
+    print(board.push_move("a2a4"))
+    print(board.representation())
+    print(board.push_move("b4a3"))
+    #test_moves(board, "ep")
 
 
