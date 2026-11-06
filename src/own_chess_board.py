@@ -567,11 +567,10 @@ class ChessBoard():
         en_passant_sq = None
 
         # en passant
-        if self.sq[source] in [0, 6] and abs(source - target) in [9, 11] and target == EMPTY:
-            print("En passant!")
+        if self.sq[source] in [0, 6] and abs(source - target) in [9, 11] and self.sq[target] == EMPTY:
             direction = 10 if self.player_white else -10 
             en_passant_sq = target + direction
-            captured_piece = self.sq[captured_sq]
+            captured_piece = self.sq[en_passant_sq]
         
         # Update castling rights
         if moved_piece == 5 :  # White king
@@ -607,12 +606,17 @@ class ChessBoard():
         # update piece lists
         self.pieces[moved_piece].remove(source)
         if captured_piece not in (EMPTY, BORDER):
-            self.pieces[captured_piece].remove(target)
+            if en_passant_sq == None:
+                self.pieces[captured_piece].remove(target)
+            else:
+                self.pieces[captured_piece].remove(en_passant_sq)
         self.pieces[new_piece].append(target)
 
         # update board squares
         self.sq[source] = EMPTY
         self.sq[target] = new_piece
+        if en_passant_sq != None:
+            self.sq[en_passant_sq] = EMPTY
 
         # Castling-> move rook 
         if uci_move == "e1g1":  # White kingside
@@ -694,6 +698,7 @@ class ChessBoard():
             self.sq[target] = captured_piece
         else:
             self.sq[en_passant] = captured_piece
+            self.sq[target] = EMPTY
     
 
         # update representation
