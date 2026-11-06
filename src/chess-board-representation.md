@@ -38,29 +38,3 @@
 8				12
     19		21	
 
-
-### Perf Test 03.11.2026 
-Starting Perft Test (Mode: compare, Divide: False)
-Board Class: MyBoard
-FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-------------------------------------------------------------
-
---- Depth 1 ---
-[Reference] Nodes: 20 | Time: 0.0005s
-[MyBoard  ] Nodes: 20 | Time: 0.0044s
-Status: ✅ PASS
-
---- Depth 2 ---
-[Reference] Nodes: 400 | Time: 0.0055s
-[MyBoard  ] Nodes: 400 | Time: 0.0979s
-Status: ✅ PASS
-
---- Depth 3 ---
-[Reference] Nodes: 8,902 | Time: 0.1101s
-[MyBoard  ] Nodes: 8,902 | Time: 2.3663s
-Status: ✅ PASS
-
---- Depth 4 ---
-[Reference] Nodes: 197,281 | Time: 2.5039s
-[MyBoard  ] Nodes: 197,281 | Time: 51.9407s
-Status: ✅ PASS
