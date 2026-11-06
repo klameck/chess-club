@@ -436,14 +436,30 @@ class MyBoard():
 
         # filter out safe moves on temporary board
         safe_moves = []
-        for move in legal_moves:
+        for move in legal_moves:     
+            sim_sq = self.sq
+            sim_pieces = self.pieces          
             source = self._from_uci(move[:2])
             target = self._from_uci(move[2:4])
-            moved_piece = self.sq[source]
-            captured_piece = self.sq[target] #safe content of target square 
+            moved_piece = sim_sq[source]
+            print(sim_sq, type(sim_sq))
+            captured_piece = sim_sq[target] #safe content of target square
+            en_passant_sq = None
 
-            self.sq[target] = moved_piece
-            self.sq[source] = EMPTY
+
+            # en passant
+            if sim_sq[source] in [0, 6] and abs(source - target) in [9, 11] and sim_sq[target] == EMPTY:
+                direction = 10 if self.player_white else -10 
+                en_passant_sq = target + direction
+                captured_piece = sim_sq[en_passant_sq]
+
+            # update board squares
+            sim_sq[source] = EMPTY
+            sim_sq[target] = moved_piece
+            if en_passant_sq != None:
+                sim_sq[en_passant_sq] = EMPTY
+             
+            
             self.pieces[moved_piece].remove(source)
             self.pieces[moved_piece].append(target)
             if captured_piece not in (EMPTY, BORDER):
@@ -452,14 +468,6 @@ class MyBoard():
             king_code = 5 if self.player_white else 11
             king_square = self.pieces[king_code][0]
             in_check = self.square_attacked(king_square)
-
-            #restore the original board and piece lists.
-            self.sq[source] = moved_piece
-            self.sq[target] = captured_piece
-            self.pieces[moved_piece].remove(target)
-            self.pieces[moved_piece].append(source)
-            if captured_piece not in (EMPTY, BORDER):
-                self.pieces[captured_piece].append(target)
 
             if not in_check:
                 safe_moves.append(move)
@@ -599,6 +607,7 @@ class MyBoard():
             direction = 10 if self.player_white else -10 
             en_passant_sq = target + direction
             captured_piece = self.sq[en_passant_sq]
+            
         
         # Update castling rights
         if moved_piece == 5 :  # White king
