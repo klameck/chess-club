@@ -163,7 +163,7 @@ class ChessBoard():
             "b_queen_side": "q" in castling
         }
         # En-passant target square
-        self.en_passant = None if ep == "-" else self._uci_square(ep)
+        self.en_passant = None if ep == "-" else self._from_uci(ep)
 
         # Move counters
         self.halfmove_clock = int(halfmove)
@@ -417,15 +417,22 @@ class ChessBoard():
         #castling
         self.do_castling(legal_moves)
 
-        #### TO DO ####
-        # en passant 
+        # en passant
+        pawn_starting_moves = ["a2a4", "b2b4", "c2c4", "d2d4", "e2e4", "f2f4", "g2g4", "h2h4", "a7a5", "b7b5", "c7c5", "d7d5", "e7e5", "f7f5", "g7g5", "h7h5"]
+        # last move of potentially captured pawn was starting move (double advance)
+        if len(self.history) > 3 and self.history[-1] in pawn_starting_moves:
+            # check only adjacant files / chapturing pawn has advanced exactly three
+            capture_square = self._from_uci(self.history[-1][2:4])
+            for attacking_square in [capture_square +1, capture_square -1]:
+                if self.player_white and self.sq[attacking_square] == 0 or not self.player_white and self.sq[attacking_square] == 6:
+                    legal_moves.append(self.convert_to_uci(attacking_square, capture_square + pawn_direction))
 
 
         # filter out safe moves on temporary board
         safe_moves = []
         for move in legal_moves:
-            source = self._uci_square(move[:2])
-            target = self._uci_square(move[2:4])
+            source = self._from_uci(move[:2])
+            target = self._from_uci(move[2:4])
             moved_piece = self.sq[source]
             captured_piece = self.sq[target] #safe content of target square 
 
@@ -454,7 +461,7 @@ class ChessBoard():
         return safe_moves
     
     @staticmethod
-    def _uci_square(coord):
+    def _from_uci(coord):
         file_index = ord(coord[0]) - ord("a") + 1
         rank_index = 10 - int(coord[1])
         return rank_index * 10 + file_index
@@ -552,8 +559,8 @@ class ChessBoard():
             return False
 
         #make move
-        source = self._uci_square(uci_move[:2])
-        target = self._uci_square(uci_move[2:4])
+        source = self._from_uci(uci_move[:2])
+        target = self._from_uci(uci_move[2:4])
 
         moved_piece = self.sq[source]
         captured_piece = self.sq[target]
@@ -561,6 +568,7 @@ class ChessBoard():
 
         # en passant
         if self.sq[source] in [0, 6] and abs(source - target) in [9, 11] and target == EMPTY:
+            print("En passant!")
             direction = 10 if self.player_white else -10 
             en_passant_sq = target + direction
             captured_piece = self.sq[captured_sq]
@@ -638,8 +646,8 @@ class ChessBoard():
         
         # get last move and remove from history
         uci_move = self.history.pop()
-        source = self._uci_square(uci_move[:2])
-        target = self._uci_square(uci_move[2:4])
+        source = self._from_uci(uci_move[:2])
+        target = self._from_uci(uci_move[2:4])
         moved_piece = self.sq[target]
 
         captured_piece = self.capture_history.pop()
@@ -670,7 +678,7 @@ class ChessBoard():
         self.pieces[old_piece].append(source)
 
         # re-put captured piece
-        en_passant = en_passant_captured_sq.pop()
+        en_passant = self.en_passant_captured_sq.pop()
         if captured_piece not in (EMPTY, BORDER):
             # check for en passant
             if en_passant == None:
@@ -718,12 +726,12 @@ def test_moves(board, move):
         print("Black moves g8h6", board.push_move("g8h6"))
         print("White moves d4d5", board.push_move("d4d5"))
         print("Black moves c7c5", board.push_move("c7c5"))
-        print(board.representation)
+        print(board.representation())
         print("White moves d5c6", board.push_move("d5c6"))
-        print(board.representation)
+        print(board.representation())
 
         print("Reversing last move", board.pop_move())
-        print(board.representation)
+        print(board.representation())
 
     else:
         try:
