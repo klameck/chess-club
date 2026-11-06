@@ -548,6 +548,25 @@ class MyBoard():
     def is_checkmate(self):
         return self.is_check() and len(self.get_legal_moves()) == 0  #is in check and no legal moves left
 
+
+    def is_draw(self):
+        # stalemate
+        if len(self.get_legal_moves()) == 0:
+            return True 
+        # insufficient material
+        # combination of any of these (without pawns)
+        # a lone king
+        # king + bishop
+        # king + knight
+
+        # king + 2 knights v. king
+
+        # 50 Move rule
+        # if no pawn has been moved and no capture has been made in the last 50 moves.
+
+        # Draw by repition
+        # third time same board state (requires full history)
+        
     def move_rook(self, source, target):
         rook = self.sq[source]
 
