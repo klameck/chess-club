@@ -438,35 +438,54 @@ class MyBoard():
         # en passant missing
         safe_moves = []
         for move in legal_moves:
-            source = self._from_uci(move[:2])
-            target = self._from_uci(move[2:4])
-            moved_piece = self.sq[source]
-            captured_piece = self.sq[target] #safe content of target square
-
-            self.sq[target] = moved_piece
-            self.sq[source] = EMPTY
-            self.pieces[moved_piece].remove(source)
-            self.pieces[moved_piece].append(target)
-            if captured_piece not in (EMPTY, BORDER):
-                self.pieces[captured_piece].remove(target)
-
-            king_code = 5 if self.player_white else 11
-            king_square = self.pieces[king_code][0]
-            in_check = self.square_attacked(king_square)
-
-            #restore the original board and piece lists.
-            self.sq[source] = moved_piece
-            self.sq[target] = captured_piece
-            self.pieces[moved_piece].remove(target)
-            self.pieces[moved_piece].append(source)
-            if captured_piece not in (EMPTY, BORDER):
-                self.pieces[captured_piece].append(target)
-
-            if not in_check:
+            print(type(move))
+            print(self.representation())
+            if self.move_is_safe(move, self.sq, self.pieces):
                 safe_moves.append(move)
-
+            print(self.representation())
         return safe_moves
     
+    def move_is_safe(self, move, sq, pieces):
+        print(move)
+        source = self._from_uci(move[:2])
+        target = self._from_uci(move[2:4])
+        moved_piece = sq[source]
+        captured_piece = sq[target] #safe content of target square
+        en_passant_sq = None
+
+        # en passant
+        if sq[source] in [0, 6] and abs(source - target) in [9, 11] and sq[target] == EMPTY:
+            direction = 10 if self.player_white else -10 
+            en_passant_sq = target + direction
+            captured_piece = sq[en_passant_sq]
+
+        # update squares
+        sq[target] = moved_piece
+        sq[source] = EMPTY
+        if en_passant_sq != None:
+            sq[en_passant_sq] = EMPTY
+        
+        # update pieces
+        # update piece lists
+        pieces[moved_piece].remove(source)
+        if captured_piece not in (EMPTY, BORDER):
+            if en_passant_sq == None:
+                pieces[captured_piece].remove(target)
+            else:
+                pieces[captured_piece].remove(en_passant_sq)
+        pieces[moved_piece].append(target)
+
+        # check for check
+        king_code = 5 if self.player_white else 11
+        king_square = pieces[king_code][0]
+        in_check = self.square_attacked(king_square)
+
+        if in_check:
+            return False 
+        else:
+            return True
+        
+
     @staticmethod
     def _from_uci(coord):
         file_index = ord(coord[0]) - ord("a") + 1
