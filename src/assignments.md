@@ -34,6 +34,17 @@ Starting Perft Test (Mode: custom, Divide: False)
 Board Class: MyBoard
 FEN: 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1
 
+## Assignment 3 - Flamegraph
+run in terminal: 
+```py-spy record --rate 1000 --format speedscope -o bitboard-profile.json -- python -m ccc26.eval.perft --board ccc26.board.Bitboard -d 3 --mode custom```
+
+open created json file in the app: https://www.speedscope.app/ 
+
+or 
+
+create a flamegraph svg file by running this code:
+```py-spy record --rate 1000 --format flamegraph -o bitboard-flamegraph.svg -- python -m ccc26.eval.perft --board ccc26.board.Bitboard -d 3 --mode custom```
+
 ## Assignment 3 - Profiling 
 
 Trial from 06.11.2026

@@ -51,7 +51,7 @@ def parse_square(name: str) -> int:
     return (int(name[1]) - 1) * 8 + ord(name[0]) - 97
 
 
-class MyBoard:
+class Bitboard():
     def __init__(self, fen: str | None = None):
         self.bitboards = [0] * 12
         self.occupied = [0, 0]  # index 0 = White, 1 = Black
