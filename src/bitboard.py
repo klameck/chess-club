@@ -418,8 +418,10 @@ class Bitboard():
         return square_name(source) + square_name(target) + promotion
 
     def push_move(self, uci_move: str):
+        
         if uci_move not in self.get_legal_moves():
             return False
+        
         source = parse_square(uci_move[:2])
         target = parse_square(uci_move[2:4])
         promotion = uci_move[4:] if len(uci_move) == 5 else ""
