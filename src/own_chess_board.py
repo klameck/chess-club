@@ -438,15 +438,11 @@ class MyBoard():
         # en passant missing
         safe_moves = []
         for move in legal_moves:
-            print(type(move))
-            print(self.representation())
-            if self.move_is_safe(move, self.sq, self.pieces):
+            if self.move_is_safe(move, self.sq.copy(), self.pieces.copy()):
                 safe_moves.append(move)
-            print(self.representation())
         return safe_moves
     
     def move_is_safe(self, move, sq, pieces):
-        print(move)
         source = self._from_uci(move[:2])
         target = self._from_uci(move[2:4])
         moved_piece = sq[source]
@@ -465,19 +461,13 @@ class MyBoard():
         if en_passant_sq != None:
             sq[en_passant_sq] = EMPTY
         
-        # update pieces
-        # update piece lists
-        pieces[moved_piece].remove(source)
-        if captured_piece not in (EMPTY, BORDER):
-            if en_passant_sq == None:
-                pieces[captured_piece].remove(target)
-            else:
-                pieces[captured_piece].remove(en_passant_sq)
-        pieces[moved_piece].append(target)
 
         # check for check
         king_code = 5 if self.player_white else 11
-        king_square = pieces[king_code][0]
+        if moved_piece == king_code:
+            king_square = target
+        else:
+            king_square = pieces[king_code][0]
         in_check = self.square_attacked(king_square)
 
         if in_check:
