@@ -60,6 +60,8 @@ PIECE_TO_SYMBOL = {
     (BLACK, KING): "k",
 }
 
+SYMBOL_TO_PIECE = {v: k  for k,v in PIECE_TO_SYMBOL.items()}
+
 PROMOTION_SYMBOLS = {
     KNIGHT: "n",
     BISHOP: "b",
@@ -204,7 +206,8 @@ class MagicBitBoard():
 
     def __init__(self, fen: str | None = None):
 
-        super().__init__(fen)
+        #super().__init__(fen) 
+        
 
         # 12 piece bitboards
         # pieces[color][piece_type]
@@ -258,12 +261,12 @@ class MagicBitBoard():
                 if char in "12345678":
                     file += int(char)
 
-                elif char in PIECE_SYMBOLS:
+                elif char in SYMBOL_TO_PIECE:
 
                     if file >= 8:
                         raise ValueError("Too many squares in rank")
 
-                    color, piece_type = PIECE_SYMBOLS[char]
+                    color, piece_type = SYMBOL_TO_PIECE[char]
                     square = rank * 8 + file
 
                     self.pieces[color][piece_type] |= 1 << square
