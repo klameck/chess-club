@@ -1242,6 +1242,43 @@ class MagicBitBoard():
     def __str__(self) -> str:
         return self.to_fen()
 
+    def is_checkmate(self) -> bool:
+        """Determines if the active player is checkmated.
+
+        Returns:
+            True if the active player is in checkmate, False otherwise.
+        """
+        return self.is_in_check(board.side_to_move) and self.get_legal_moves() == 0
+    
+    def is_stalemate(self) -> bool:
+        """Determines if the game is drawn by stalemate.
+
+        Returns:
+            True if the position is stalemate, False otherwise.
+        """
+        return not self.is_in_check(board.side_to_move) and self.get_legal_moves() == 0
+
+    
+    ######## TO BE ADDED ##############
+    def is_draw(self) -> bool:
+        
+        """Determines if the game is drawn by any chess rule.
+
+        Covers stalemate, 50-move rule, threefold repetition, and insufficient material.
+
+        Returns:
+            True if the current position is a draw, False otherwise.
+        """
+        pass
+        """return (
+            self._board.is_stalemate()
+            or self._board.is_insufficient_material()
+            or self._board.is_fifty_moves()
+            or self._board.is_repetition(3)
+        )"""
+
+
+
 
 if __name__ == "__main__":
 
@@ -1293,3 +1330,4 @@ if __name__ == "__main__":
         pawn_count += 1
 
     print(pawn_count)
+
