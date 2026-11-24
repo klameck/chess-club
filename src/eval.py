@@ -16,14 +16,8 @@ BOARD_SIZE = 64
 
 FULL_MASK = (1 << BOARD_SIZE) - 1
 
-def iter_bits(bitboard: int):
-    """Iterate over all occupied squares."""
 
-    while bitboard:
-        square, bitboard = pop_lsb(bitboard)
-        yield square
-
-def evaluate(board):
+def evaluate(chessboard):
     scores = [0,0] # assumes [WHITE, BLACK]
     for color in [WHITE, BLACK]:
         """ Using basic material evaluation """
@@ -31,10 +25,10 @@ def evaluate(board):
         # assumes [PAWN, KNIGHT, BISHOP, ROOK, QUEEN]
         mat_vals = [100, 300, 350, 500, 1000] 
         for piece_type in [PAWN, KNIGHT, BISHOP, ROOK, QUEEN]:
-            for piece in iter_bits(board.pieces[color][piece_type]):
+            for piece in board.iter_bits(chessboard.pieces[color][piece_type]):
                 scores[color] += mat_vals[piece_type]
     
-    
+
     return scores[1] - scores[0]
     
 
