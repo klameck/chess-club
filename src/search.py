@@ -1,11 +1,9 @@
 import board
+from eval import evaluate
 
 visited_edges = []
 pruned_edges = []
 
-         
-def evaluate(node):
-    return 1
 
 def alpha_beta(node, depth, maximizing, alpha = - float('inf'), beta =  float('inf')):
 

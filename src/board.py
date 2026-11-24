@@ -1243,42 +1243,53 @@ class MagicBitBoard():
         return self.to_fen()
 
 
+if __name__ == "main":
 
+    board = MagicBitBoard()
 
-board = MagicBitBoard()
+    # Print initial position
+    board.print_board()
 
-# Print initial position
-board.print_board()
+    # Generate legal moves
+    moves = list(board.get_legal_moves())
 
-# Generate legal moves
-moves = list(board.get_legal_moves())
+    print("\nLegal moves:")
+    print([str(move) for move in moves])
 
-print("\nLegal moves:")
-print([str(move) for move in moves])
+    print("\nNumber of legal moves:", len(moves))
 
-print("\nNumber of legal moves:", len(moves))
+    assert len(moves) == 20
 
-assert len(moves) == 20
+    # Play e2-e4
+    move = Move(12, 28)
 
-# Play e2-e4
-move = Move(12, 28)
+    board.push_move(move)
 
-board.push_move(move)
+    print("\nAfter e2-e4:")
+    board.print_board()
 
-print("\nAfter e2-e4:")
-board.print_board()
+    print("FEN:", board.to_fen())
 
-print("FEN:", board.to_fen())
+    # Undo
+    board.pop_move()
 
-# Undo
-board.pop_move()
+    print("\nAfter undo:")
+    board.print_board()
 
-print("\nAfter undo:")
-board.print_board()
+    assert board.to_fen() == (
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/"
+        "RNBQKBNR w KQkq - 0 1"
+    )
 
-assert board.to_fen() == (
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/"
-    "RNBQKBNR w KQkq - 0 1"
-)
+    print("\nAll tests passed!")
 
-print("\nAll tests passed!")
+    print(board.pieces)
+    print(board.remove_piece(8))
+    pawn_count = 0
+    for pawn in iter_bits(board.pieces[WHITE][PAWN]):
+        board.remove_piece(pawn)
+
+    for pawn in iter_bits(board.pieces[WHITE][PAWN]):
+        pawn_count += 1
+
+    print(pawn_count)
