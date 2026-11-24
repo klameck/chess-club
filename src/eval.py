@@ -19,12 +19,15 @@ def evaluate(chessboard):
                 """ Positional tables """
                 pos_scores[color] += POS_TABLES[color][piece_type][piece]
     
-    cum_score = mat_scores[0] - mat_scores[1] + (pos_scores[0] - pos_scores[1]) * EVAL_FACTOR
+    # combine scores
+    cum_score = (mat_scores[0] - mat_scores[1]) + (pos_scores[0] - pos_scores[1]) * EVAL_FACTOR
     return cum_score
     
 
 if __name__ == "__main__":
-    chessboard = board.MagicBitBoard("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+    chessboard = board.MagicBitBoard()
+    chessboard.remove_piece(0)
+    print(chessboard)
 
     # Print initial position
     chessboard.print_board()
