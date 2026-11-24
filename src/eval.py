@@ -28,7 +28,14 @@ def evaluate(chessboard):
             for piece in board.iter_bits(chessboard.pieces[color][piece_type]):
                 scores[color] += mat_vals[piece_type]
     
-
+    
     return scores[1] - scores[0]
     
 
+if __name__ == "__main__":
+    print("djf")
+    chessboard = board.MagicBitBoard("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+
+    # Print initial position
+    chessboard.print_board()
+    print(evaluate(chessboard))

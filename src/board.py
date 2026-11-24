@@ -1243,7 +1243,7 @@ class MagicBitBoard():
         return self.to_fen()
 
 
-if __name__ == "main":
+if __name__ == "__main__":
 
     board = MagicBitBoard()
 

@@ -56,10 +56,11 @@ def alpha_beta(node, depth, maximizing, alpha = - float('inf'), beta =  float('i
         
         return best_value
 
-board = board.MagicBitBoard()
-print("here")
-print(board)
+if __name__ == "__main__":
 
-best_value = alpha_beta(board,3,True)
+    board = board.MagicBitBoard("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1")
+    print(board)
 
-print(best_value)
+    best_value = alpha_beta(board,3,True)
+
+    print(best_value)
