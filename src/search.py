@@ -3,31 +3,37 @@ from eval import evaluate
 
 visited_edges = []
 pruned_edges = []
-
+global best_value
+best_value = None
 
 def alpha_beta(node, depth, maximizing, alpha = - float('inf'), beta =  float('inf')):
-
+    global best_value
+    if best_value == None:
+        if maximizing:
+            best_value = float("-inf")
+        else:
+            best_value = float("inf")
     possible_moves = node.get_legal_moves()
     
     if depth == 0 or possible_moves == 0:
         return evaluate(node)
 
     if maximizing:
-        best_value = float("-inf")
-
         for i, move in enumerate(possible_moves):
-
+            # if move not in visited_edges and move not in pruned_edges [?]
             node.push_move(move)
 
             visited_edges.append((node.to_fen(), str(move)))
 
             value = alpha_beta(node, depth - 1, False, alpha, beta)
             node.pop_move()
-            
+
+            #print(f"depth: {depth}, \tmove: {i} \tmaximizing: {maximizing}, \tbest value: {best_value}, \tnew value: {value}, \talpha: {alpha}, \tbeta: {beta}")
+
             best_value = max(best_value, value)
             alpha = max(alpha, best_value)
-    
-            if alpha >= beta:
+
+            if value >= beta:
                 for remaining_move in possible_moves[i + 1:]:
                     pruned_edges.append((node.to_fen(), str(remaining_move)))
                 break
@@ -35,8 +41,6 @@ def alpha_beta(node, depth, maximizing, alpha = - float('inf'), beta =  float('i
         return best_value
     
     else:
-        best_value = float("inf")
-
         for i, move in enumerate(possible_moves):
         
             node.push_move(move)
@@ -49,7 +53,7 @@ def alpha_beta(node, depth, maximizing, alpha = - float('inf'), beta =  float('i
             best_value = min(best_value, value)
             beta = min(beta, best_value)
     
-            if alpha >= beta:
+            if value <= alpha:
                 for remaining_move in possible_moves[i + 1:]:
                     pruned_edges.append((node.to_fen(), str(remaining_move)))
                 break
