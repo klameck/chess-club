@@ -4,22 +4,8 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Iterable
 
-WHITE = 0
-BLACK = 1
 
-PAWN = 0
-KNIGHT = 1
-BISHOP = 2
-ROOK = 3
-QUEEN = 4
-KING = 5
-
-PIECE_TYPES = 6
-COLORS = 2
-
-BOARD_SIZE = 64
-
-FULL_MASK = (1 << BOARD_SIZE) - 1
+from config import WHITE, BLACK, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, PIECE_TYPES, COLORS, BOARD_SIZE, FULL_MASK
 
 NO_SQUARE = -1
 
