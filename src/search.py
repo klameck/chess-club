@@ -1,70 +1,74 @@
 import board
 from eval import evaluate
 
-visited_edges = []
-pruned_edges = []
-global best_value
-best_value = None
 
-def alpha_beta(node, depth, maximizing, alpha = - float('inf'), beta =  float('inf')):
-    global best_value
-    if best_value == None:
-        if maximizing:
-            best_value = float("-inf")
-        else:
-            best_value = float("inf")
+#### Problemo: 
+# Ich glaube die Positional tables sind teils falsch. Es kommen mainly negative evals raus, was nicht immer sinn ergibt.
+
+
+def alpha_beta(node, depth, alpha = - float('inf'), beta =  float('inf')):
+    maximizing = node.side_to_move == "WHITE"
     possible_moves = node.get_legal_moves()
-    
-    if depth == 0 or possible_moves == 0:
-        return evaluate(node)
+    best_move = None
+
+    #leave node and terminal positions
+    if len(possible_moves) == 0:
+
+        #penalty for checkmate
+        if node.is_checkmate():
+            return (
+                -100000 if maximizing else 100000
+            ), None
+        
+        return 0, None
+
+    if depth == 0:
+        return evaluate(node), None
 
     if maximizing:
-        for i, move in enumerate(possible_moves):
-            # if move not in visited_edges and move not in pruned_edges [?]
+        best_value = float("-inf")
+
+        for move in possible_moves:
+            
             node.push_move(move)
-
-            visited_edges.append((node.to_fen(), str(move)))
-
-            value = alpha_beta(node, depth - 1, False, alpha, beta)
+            value, _ = alpha_beta(node, depth - 1, alpha, beta)
             node.pop_move()
 
-            #print(f"depth: {depth}, \tmove: {i} \tmaximizing: {maximizing}, \tbest value: {best_value}, \tnew value: {value}, \talpha: {alpha}, \tbeta: {beta}")
+            if value > best_value:
+                best_value = value
+                best_move = move
 
-            best_value = max(best_value, value)
             alpha = max(alpha, best_value)
 
             if value >= beta:
-                for remaining_move in possible_moves[i + 1:]:
-                    pruned_edges.append((node.to_fen(), str(remaining_move)))
                 break
         
-        return best_value
+        return best_value, best_move
     
     else:
-        for i, move in enumerate(possible_moves):
+        best_value = float("inf")
+        for move in possible_moves:
         
             node.push_move(move)
-
-            visited_edges.append((node.to_fen(), str(move)))
-
-            value = alpha_beta(node, depth - 1, True, alpha, beta)
+            value, _ = alpha_beta(node, depth - 1, alpha, beta)
             node.pop_move()
             
-            best_value = min(best_value, value)
+            if value < best_value:
+                best_value = value
+                best_move = move
+
             beta = min(beta, best_value)
     
             if value <= alpha:
-                for remaining_move in possible_moves[i + 1:]:
-                    pruned_edges.append((node.to_fen(), str(remaining_move)))
                 break
         
-        return best_value
+        return best_value, best_move
 
 if __name__ == "__main__":
 
-    board = board.MagicBitBoard("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1")
-    print(board)
+    board = board.MagicBitBoard()#"r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1")
+    board.print_board()
 
-    best_value = alpha_beta(board,3,True)
+    score, move = alpha_beta(board, 3)
+    print(score, move)
 
-    print(best_value)
