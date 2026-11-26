@@ -1234,7 +1234,7 @@ class MagicBitBoard():
         Returns:
             True if the active player is in checkmate, False otherwise.
         """
-        return self.is_in_check(board.side_to_move) and self.get_legal_moves() == 0
+        return self.is_in_check(self.side_to_move) and self.get_legal_moves() == 0
     
     def is_stalemate(self) -> bool:
         """Determines if the game is drawn by stalemate.
@@ -1242,7 +1242,7 @@ class MagicBitBoard():
         Returns:
             True if the position is stalemate, False otherwise.
         """
-        return not self.is_in_check(board.side_to_move) and self.get_legal_moves() == 0
+        return not self.is_in_check(self.side_to_move) and self.get_legal_moves() == 0
 
     
     ######## TO BE ADDED ##############

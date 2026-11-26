@@ -1,29 +1,23 @@
 import board
-from eval import evaluate
+from eval import evaluate2
 
 
 #### Problemo: 
 # Ich glaube die Positional tables sind teils falsch. Es kommen mainly negative evals raus, was nicht immer sinn ergibt.
 
 
-def alpha_beta(node, depth, alpha = - float('inf'), beta =  float('inf')):
+def alpha_beta(node, depth, alpha = - float('inf'), beta =  float('inf')):    
     maximizing = node.side_to_move == "WHITE"
     possible_moves = node.get_legal_moves()
     best_move = None
 
     #leave node and terminal positions
     if len(possible_moves) == 0:
-
-        #penalty for checkmate
-        if node.is_checkmate():
-            return (
-                -100000 if maximizing else 100000
-            ), None
-        
+    
         return 0, None
 
     if depth == 0:
-        return evaluate(node), None
+        return evaluate2(node), None
 
     if maximizing:
         best_value = float("-inf")
